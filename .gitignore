@@ -1,0 +1,6 @@
+.manual
+.env
+dist/
+*.exe
+*.test
+coverage.out
