@@ -18,6 +18,7 @@ type FieldType string
 
 const (
 	FieldText       FieldType = "text"
+	FieldString     FieldType = "string"
 	FieldTextarea   FieldType = "textarea"
 	FieldRichText   FieldType = "richtext"
 	FieldMarkdown   FieldType = "markdown"
@@ -26,6 +27,7 @@ const (
 	FieldSelect     FieldType = "select"
 	FieldDateTime   FieldType = "datetime"
 	FieldJSON       FieldType = "json"
+	FieldObject     FieldType = "object"
 	FieldRelation   FieldType = "relation"
 	FieldCollection FieldType = "collection"
 	FieldComputed   FieldType = "computed"
@@ -89,6 +91,7 @@ type Field struct {
 	Options      []Option         `json:"options,omitempty"`
 	Rules        []ValidationRule `json:"rules,omitempty"`
 	Items        *Field           `json:"items,omitempty"`
+	Fields       []Field          `json:"fields,omitempty"`
 	Searchable   bool             `json:"searchable,omitempty"`
 	Indexed      bool             `json:"indexed,omitempty"`
 	Unique       bool             `json:"unique,omitempty"`

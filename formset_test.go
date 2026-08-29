@@ -72,6 +72,60 @@ func TestReviewAndDiff(t *testing.T) {
 	}
 }
 
+func TestBindValidatesNestedObjectCollections(t *testing.T) {
+	t.Parallel()
+	record := RecordType{
+		ID: "landing", Label: "Landing", Scope: ScopeWorkspace,
+		Fields: []Field{
+			{
+				ID: "faq", Label: "FAQ", Type: FieldCollection,
+				Items: &Field{
+					ID: "item", Label: "Item", Type: FieldObject,
+					Fields: []Field{
+						{ID: "question", Label: "Question", Type: FieldText, Required: true},
+						{ID: "answer", Label: "Answer", Type: FieldTextarea},
+					},
+				},
+			},
+			{
+				ID: "author", Label: "Author", Type: FieldObject,
+				Fields: []Field{
+					{ID: "name", Label: "Name", Type: FieldText, Required: true},
+					{
+						ID: "links", Label: "Links", Type: FieldCollection,
+						Items: &Field{ID: "item", Label: "Item", Type: FieldText},
+					},
+				},
+			},
+		},
+	}
+	form, err := BindDocuments(record, Documents{
+		RU: map[string]any{
+			"faq":    []any{map[string]any{"question": "Где?", "answer": "В IDE"}},
+			"author": map[string]any{"name": "Анна", "links": []any{"https://example.test"}},
+		},
+		EN: map[string]any{
+			"faq":    []any{map[string]any{"question": "Where?", "answer": "In the IDE"}},
+			"author": map[string]any{"name": "Anna", "links": []any{"https://example.test"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if len(form.Issues) != 0 {
+		t.Fatalf("issues: %#v", form.Issues)
+	}
+	broken, err := Bind(record, map[string]map[string]any{
+		"en": {"faq": []any{map[string]any{"answer": "missing question"}}, "author": map[string]any{"name": 1}},
+	}, "en")
+	if err != nil {
+		t.Fatalf("bind broken: %v", err)
+	}
+	if len(broken.Issues) == 0 {
+		t.Fatal("expected nested type/required issues")
+	}
+}
+
 func TestJSONSchemaFromRecord(t *testing.T) {
 	t.Parallel()
 	schema := JSONSchemaFromRecord(RecordType{

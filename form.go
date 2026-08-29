@@ -166,9 +166,49 @@ func typeIssue(locale string, field Field, value any) *Issue {
 			}
 		}
 		return &Issue{Locale: locale, Field: string(field.ID), Code: "option", Message: "value is not a declared option"}
-	case FieldText, FieldTextarea, FieldRichText, FieldMarkdown, FieldDateTime:
+	case FieldText, FieldString, FieldTextarea, FieldRichText, FieldMarkdown, FieldDateTime:
 		if _, ok := value.(string); !ok {
 			return &Issue{Locale: locale, Field: string(field.ID), Code: "type", Message: "value must be a string"}
+		}
+	case FieldObject:
+		document, ok := value.(map[string]any)
+		if !ok {
+			return &Issue{Locale: locale, Field: string(field.ID), Code: "type", Message: "value must be an object"}
+		}
+		for _, nested := range field.Fields {
+			item, exists := document[string(nested.ID)]
+			if !exists || item == nil || item == "" {
+				if nested.Required {
+					return &Issue{
+						Locale: locale, Field: string(nested.ID), Code: "required",
+						Message: fmt.Sprintf("%s is required", nested.Label),
+					}
+				}
+				continue
+			}
+			if issue := typeIssue(locale, nested, item); issue != nil {
+				return issue
+			}
+		}
+	case FieldCollection:
+		if field.Items == nil {
+			return nil
+		}
+		switch items := value.(type) {
+		case []any:
+			for _, item := range items {
+				if issue := typeIssue(locale, *field.Items, item); issue != nil {
+					return issue
+				}
+			}
+		case []string:
+			for _, item := range items {
+				if issue := typeIssue(locale, *field.Items, item); issue != nil {
+					return issue
+				}
+			}
+		default:
+			return &Issue{Locale: locale, Field: string(field.ID), Code: "type", Message: "value must be an array"}
 		}
 	}
 	return nil

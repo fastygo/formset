@@ -38,8 +38,17 @@ func fieldSchema(field Field) map[string]any {
 		schema["type"] = "number"
 	case FieldBoolean:
 		schema["type"] = "boolean"
-	case FieldJSON, FieldCollection:
+	case FieldJSON:
 		schema["type"] = []string{"object", "array"}
+	case FieldObject:
+		schema["type"] = "object"
+		properties := map[string]any{}
+		for _, nested := range field.Fields {
+			properties[string(nested.ID)] = fieldSchema(nested)
+		}
+		schema["properties"] = properties
+	case FieldCollection:
+		schema["type"] = "array"
 	case FieldSelect:
 		schema["type"] = "string"
 		if len(field.Options) > 0 {
