@@ -29,9 +29,12 @@ func JSONSchemaFromRecord(record RecordType) JSONSchema {
 }
 
 func fieldSchema(field Field) map[string]any {
-	schema := map[string]any{"title": field.Label}
+	schema := map[string]any{"title": field.Label, "x-field-type": string(field.Type)}
 	if field.Description != "" {
 		schema["description"] = field.Description
+	}
+	if field.UIHint != "" {
+		schema["x-ui-hint"] = field.UIHint
 	}
 	switch field.Type {
 	case FieldNumber:

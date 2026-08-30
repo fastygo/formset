@@ -126,6 +126,49 @@ func TestBindValidatesNestedObjectCollections(t *testing.T) {
 	}
 }
 
+func TestBindAcceptsRichTextAndMarkdownStrings(t *testing.T) {
+	t.Parallel()
+	record := RecordType{
+		ID: "page", Label: "Page", Scope: ScopeWorkspace,
+		Fields: []Field{
+			{ID: "body", Label: "Body", Type: FieldRichText, Localized: true, UIHint: UIHintTipTap},
+			{ID: "notes", Label: "Notes", Type: FieldMarkdown, UIHint: UIHintMarkdown},
+		},
+	}
+	form, err := BindDocuments(record, Documents{
+		RU: map[string]any{"body": "<p>Привет</p>", "notes": "# Заметки"},
+		EN: map[string]any{"body": "<p>Hello</p>", "notes": "# Notes"},
+	})
+	if err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if len(form.Issues) != 0 {
+		t.Fatalf("issues: %#v", form.Issues)
+	}
+	broken, err := Bind(record, map[string]map[string]any{
+		"en": {"body": map[string]any{"type": "doc"}, "notes": 1},
+	}, "en")
+	if err != nil {
+		t.Fatalf("bind broken: %v", err)
+	}
+	if len(broken.Issues) < 2 {
+		t.Fatalf("expected type issues, got %#v", broken.Issues)
+	}
+}
+
+func TestJSONSchemaMarksRichTextHint(t *testing.T) {
+	t.Parallel()
+	schema := JSONSchemaFromRecord(RecordType{
+		ID: "page", Label: "Page", Scope: ScopeWorkspace,
+		Fields: []Field{{ID: "body", Label: "Body", Type: FieldRichText, Required: true, UIHint: UIHintTipTap}},
+	})
+	properties, _ := schema["properties"].(map[string]any)
+	body, _ := properties["body"].(map[string]any)
+	if body["type"] != "string" || body["x-field-type"] != "richtext" || body["x-ui-hint"] != UIHintTipTap {
+		t.Fatalf("unexpected schema: %#v", body)
+	}
+}
+
 func TestJSONSchemaFromRecord(t *testing.T) {
 	t.Parallel()
 	schema := JSONSchemaFromRecord(RecordType{

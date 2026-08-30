@@ -34,6 +34,13 @@ const (
 	FieldEncrypted  FieldType = "encrypted"
 )
 
+// Slot UI hints. Codex sets these on projection; renderers must not infer them from Type alone.
+const (
+	UIHintTipTap   = "tiptap"
+	UIHintMarkdown = "markdown"
+	UIHintTextarea = "textarea"
+)
+
 type RelationCardinality string
 
 const (
