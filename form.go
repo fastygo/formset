@@ -12,7 +12,7 @@ type Issue struct {
 	Message string `json:"message"`
 }
 
-// Form is the slot contract: schema fields plus locale documents.
+// Form is the slot contract: schema fields plus one document per locale.
 type Form struct {
 	Record  RecordTypeID              `json:"record"`
 	Locales []string                  `json:"locales"`
@@ -22,25 +22,18 @@ type Form struct {
 	Issues  []Issue                   `json:"issues,omitempty"`
 }
 
-// Documents is the bilingual payload pair used by SvelteCMS and headless records.
-type Documents struct {
-	RU map[string]any `json:"payload_ru,omitempty"`
-	EN map[string]any `json:"payload_en,omitempty"`
-}
-
-func (documents Documents) Map() map[string]map[string]any {
-	result := map[string]map[string]any{}
-	if documents.RU != nil {
-		result["ru"] = documents.RU
+// BindLocale projects one locale document. Codex and the admin bind the
+// requested locale only; fallback is a storage/read concern, not FormSet.
+func BindLocale(record RecordType, locale string, document map[string]any) (Form, error) {
+	if locale == "" {
+		return Form{}, fmt.Errorf("locale is required")
 	}
-	if documents.EN != nil {
-		result["en"] = documents.EN
-	}
-	return result
+	return Bind(record, map[string]map[string]any{locale: document}, locale)
 }
 
 // Bind projects a record type and locale documents into a renderable form.
 // Unknown document keys are kept in Extra so a save can round-trip them.
+// Locales come from the caller or from document keys. There is no default ru/en pair.
 func Bind(record RecordType, documents map[string]map[string]any, locales ...string) (Form, error) {
 	if err := record.Validate(); err != nil {
 		return Form{}, err
@@ -54,9 +47,6 @@ func Bind(record RecordType, documents map[string]map[string]any, locales ...str
 			resolvedLocales = append(resolvedLocales, locale)
 		}
 		slices.Sort(resolvedLocales)
-	}
-	if len(resolvedLocales) == 0 {
-		resolvedLocales = []string{"ru", "en"}
 	}
 	declared := make(map[FieldID]Field, len(record.Fields))
 	for _, field := range record.Fields {
@@ -111,32 +101,27 @@ func Bind(record RecordType, documents map[string]map[string]any, locales ...str
 	return form, nil
 }
 
-// BindDocuments binds the CMS payload_ru / payload_en pair.
-func BindDocuments(record RecordType, documents Documents) (Form, error) {
-	return Bind(record, documents.Map(), "ru", "en")
-}
-
 // Documents reconstructs locale objects for storage, including Extra keys.
 func (form Form) Documents() map[string]map[string]any {
 	result := make(map[string]map[string]any, len(form.Locales))
 	for _, locale := range form.Locales {
-		document := map[string]any{}
-		for key, value := range form.Values[locale] {
-			document[key] = value
-		}
-		for key, value := range form.Extra[locale] {
-			if _, exists := document[key]; !exists {
-				document[key] = value
-			}
-		}
-		result[locale] = document
+		result[locale] = form.Document(locale)
 	}
 	return result
 }
 
-func (form Form) PayloadDocuments() Documents {
-	documents := form.Documents()
-	return Documents{RU: documents["ru"], EN: documents["en"]}
+// Document reconstructs one locale object, including Extra keys.
+func (form Form) Document(locale string) map[string]any {
+	document := map[string]any{}
+	for key, value := range form.Values[locale] {
+		document[key] = value
+	}
+	for key, value := range form.Extra[locale] {
+		if _, exists := document[key]; !exists {
+			document[key] = value
+		}
+	}
+	return document
 }
 
 func typeIssue(locale string, field Field, value any) *Issue {

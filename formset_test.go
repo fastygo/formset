@@ -14,10 +14,10 @@ func TestBindProjectsLocaleDocumentsAndRoundTripsExtras(t *testing.T) {
 			{ID: "level", Label: "Level", Type: FieldSelect, Options: []Option{{Value: "advanced", Label: "Advanced"}}},
 		},
 	}
-	form, err := BindDocuments(record, Documents{
-		RU: map[string]any{"title": "Курс", "price": 39900.0, "level": "advanced", "kicker": "Backend"},
-		EN: map[string]any{"title": "Course", "price": 39900.0, "level": "advanced"},
-	})
+	form, err := Bind(record, map[string]map[string]any{
+		"ru": {"title": "Курс", "price": 39900.0, "level": "advanced", "kicker": "Backend"},
+		"en": {"title": "Course", "price": 39900.0, "level": "advanced"},
+	}, "ru", "en")
 	if err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -27,9 +27,34 @@ func TestBindProjectsLocaleDocumentsAndRoundTripsExtras(t *testing.T) {
 	if form.Values["ru"]["title"] != "Курс" || form.Extra["ru"]["kicker"] != "Backend" {
 		t.Fatalf("values/extra mismatch: %#v %#v", form.Values, form.Extra)
 	}
-	payloads := form.PayloadDocuments()
-	if payloads.RU["kicker"] != "Backend" || payloads.EN["title"] != "Course" {
-		t.Fatalf("round-trip lost document keys: %#v", payloads)
+	documents := form.Documents()
+	if documents["ru"]["kicker"] != "Backend" || documents["en"]["title"] != "Course" {
+		t.Fatalf("round-trip lost document keys: %#v", documents)
+	}
+	en, err := BindLocale(record, "en", map[string]any{"title": "Course", "price": 39900.0, "level": "advanced"})
+	if err != nil {
+		t.Fatalf("bind locale: %v", err)
+	}
+	if en.Document("en")["title"] != "Course" || len(en.Locales) != 1 {
+		t.Fatalf("single locale form: %#v", en)
+	}
+}
+
+func TestBindDoesNotInventRuEnPair(t *testing.T) {
+	t.Parallel()
+	record := RecordType{
+		ID: "page", Label: "Page", Scope: ScopeWorkspace,
+		Fields: []Field{{ID: "title", Label: "Title", Type: FieldText}},
+	}
+	form, err := Bind(record, nil)
+	if err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if len(form.Locales) != 0 {
+		t.Fatalf("locales=%v want none", form.Locales)
+	}
+	if _, err := BindLocale(record, "", map[string]any{"title": "X"}); err == nil {
+		t.Fatal("expected locale required")
 	}
 }
 
@@ -99,15 +124,9 @@ func TestBindValidatesNestedObjectCollections(t *testing.T) {
 			},
 		},
 	}
-	form, err := BindDocuments(record, Documents{
-		RU: map[string]any{
-			"faq":    []any{map[string]any{"question": "Где?", "answer": "В IDE"}},
-			"author": map[string]any{"name": "Анна", "links": []any{"https://example.test"}},
-		},
-		EN: map[string]any{
-			"faq":    []any{map[string]any{"question": "Where?", "answer": "In the IDE"}},
-			"author": map[string]any{"name": "Anna", "links": []any{"https://example.test"}},
-		},
+	form, err := BindLocale(record, "en", map[string]any{
+		"faq":    []any{map[string]any{"question": "Where?", "answer": "In the IDE"}},
+		"author": map[string]any{"name": "Anna", "links": []any{"https://example.test"}},
 	})
 	if err != nil {
 		t.Fatalf("bind: %v", err)
@@ -135,10 +154,7 @@ func TestBindAcceptsRichTextAndMarkdownStrings(t *testing.T) {
 			{ID: "notes", Label: "Notes", Type: FieldMarkdown, UIHint: UIHintMarkdown},
 		},
 	}
-	form, err := BindDocuments(record, Documents{
-		RU: map[string]any{"body": "<p>Привет</p>", "notes": "# Заметки"},
-		EN: map[string]any{"body": "<p>Hello</p>", "notes": "# Notes"},
-	})
+	form, err := BindLocale(record, "en", map[string]any{"body": "<p>Hello</p>", "notes": "# Notes"})
 	if err != nil {
 		t.Fatalf("bind: %v", err)
 	}

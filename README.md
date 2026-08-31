@@ -4,24 +4,23 @@ Schema kernel for typed admin forms. No renderer, BFF, or database.
 
 ```text
 schema (RecordType)
-  + values (payload_ru / payload_en)
+  + locale + data document
   → Form
   → slot renders fields
-  → save writes two JSON documents
+  → save writes that locale document
 ```
 
 ## API
 
 ```go
-form, err := formset.BindDocuments(record, formset.Documents{
-    RU: payloadRU,
-    EN: payloadEN,
-})
-payloads := form.PayloadDocuments()
+form, err := formset.BindLocale(record, "en", data)
+document := form.Document("en")
 schema := formset.JSONSchemaFromRecord(record)
 ```
 
-`Form.Extra` keeps undeclared document keys so a save does not drop unknown fields.
+`Bind` accepts an explicit locale map when more than one document is in
+memory. Codex reads/writes one locale per request (`?locale=` + fallback).
+`Form.Extra` keeps undeclared keys so a save does not drop unknown fields.
 
 ## Scope
 
