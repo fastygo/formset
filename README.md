@@ -1,6 +1,7 @@
 # github.com/fastygo/formset
 
 Schema kernel for typed admin forms. No renderer, BFF, or database.
+Content fields belong to `github.com/fastygo/codex`. `FromCodex` projects a Codex record into a form.
 
 ```text
 schema (RecordType)
