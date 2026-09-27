@@ -25,6 +25,6 @@ memory. Codex reads/writes one locale per request (`?locale=` + fallback).
 
 ## Scope
 
-Included: record types, fields, relations, schema review/diff, form bind, JSON Schema.
+Included: form binding, schema review, and JSON Schema for editor slots.
 
-Not included: Templ, Platform BFF, GraphQL, persistence. Those stay in the product and `fastygo/backend`.
+Not included: content ownership, Templ, a BFF, GraphQL, or persistence. Content stays in Codex. Delivery stays in the product.
