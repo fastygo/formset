@@ -3,6 +3,9 @@ package formset
 import (
 	"fmt"
 	"slices"
+
+	"github.com/fastygo/codex/content"
+	"github.com/fastygo/codex/schema"
 )
 
 type Issue struct {
@@ -38,6 +41,12 @@ func Bind(record RecordType, documents map[string]map[string]any, locales ...str
 	if err := record.Validate(); err != nil {
 		return Form{}, err
 	}
+	for _, field := range record.Fields {
+		if err := schema.ValidateFieldProfile(field); err != nil {
+			return Form{}, err
+		}
+	}
+	resource := schema.Resource{Record: record}
 	if documents == nil {
 		documents = map[string]map[string]any{}
 	}
@@ -84,6 +93,8 @@ func Bind(record RecordType, documents map[string]map[string]any, locales ...str
 				continue
 			}
 			if issue := typeIssue(locale, field, value); issue != nil {
+				form.Issues = append(form.Issues, *issue)
+			} else if issue := codexIssue(resource, locale, field, value); issue != nil {
 				form.Issues = append(form.Issues, *issue)
 			}
 			values[string(field.ID)] = value
@@ -197,4 +208,16 @@ func typeIssue(locale string, field Field, value any) *Issue {
 		}
 	}
 	return nil
+}
+
+// codexIssue applies the Codex value rules (fastygo.codex/integer, money,
+// decimal, date, uri, uuid, json-any, relation shape) to one bound value.
+// Codex is the authority; formset only relabels the issue for its locale.
+func codexIssue(resource schema.Resource, locale string, field Field, value any) *Issue {
+	metadata := map[string]content.MetadataValue{string(field.ID): {Value: value}}
+	issues := schema.CheckMetadataFields(resource, []Field{field}, metadata, "", nil)
+	if len(issues) == 0 {
+		return nil
+	}
+	return &Issue{Locale: locale, Field: string(field.ID), Code: issues[0].Code, Message: issues[0].Message}
 }

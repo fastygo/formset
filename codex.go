@@ -1,127 +1,79 @@
 package formset
 
-import "github.com/fastygo/codex/schema"
+import (
+	"maps"
 
-// FromCodex projects a Codex resource record into an editor form record.
-// Codex owns the content fields. This package only binds them for a slot.
+	"github.com/fastygo/codex/schema"
+)
+
+// FromCodex is the single entry point from a Codex record into formset.
+// The vocabulary is shared (type aliases), so the projection is a deep copy:
+// mutating the result never mutates the caller's Codex manifest.
 func FromCodex(record schema.RecordType) RecordType {
-	return RecordType{
-		ID:            RecordTypeID(record.ID),
-		Label:         record.Label,
-		Description:   record.Description,
-		SchemaVersion: SchemaVersion(record.SchemaVersion),
-		OwnerModule:   record.OwnerModule,
-		Scope:         Scope(record.Scope),
-		Fields:        projectFields(record.Fields),
-		Relations:     projectRelations(record.Relations),
-		Capabilities:  projectCapabilities(record.Capabilities),
-		Visibility:    record.Visibility,
+	projected := record
+	projected.Fields = cloneFields(record.Fields)
+	projected.Relations = cloneRelations(record.Relations)
+	if record.Capabilities != nil {
+		projected.Capabilities = append([]schema.CapabilityID(nil), record.Capabilities...)
 	}
+	return projected
 }
 
-func projectFields(fields []schema.Field) []Field {
+// FromCodexResource projects a Codex manifest resource.
+func FromCodexResource(resource schema.Resource) RecordType {
+	return FromCodex(resource.Record)
+}
+
+// FromCodexManifest projects every resource of a Codex manifest, in order.
+func FromCodexManifest(manifest schema.Manifest) []RecordType {
+	records := make([]RecordType, 0, len(manifest.Resources))
+	for _, resource := range manifest.Resources {
+		records = append(records, FromCodexResource(resource))
+	}
+	return records
+}
+
+func cloneFields(fields []schema.Field) []schema.Field {
 	if fields == nil {
 		return nil
 	}
-	projected := make([]Field, len(fields))
+	cloned := make([]schema.Field, len(fields))
 	for index, field := range fields {
-		projected[index] = projectField(field)
+		cloned[index] = cloneField(field)
 	}
-	return projected
+	return cloned
 }
 
-func projectField(field schema.Field) Field {
-	projected := Field{
-		ID:           FieldID(field.ID),
-		Label:        field.Label,
-		Type:         FieldType(field.Type),
-		Namespace:    field.Namespace,
-		OwnerModule:  field.OwnerModule,
-		Description:  field.Description,
-		Required:     field.Required,
-		Localized:    field.Localized,
-		DefaultValue: field.DefaultValue,
-		Options:      projectOptions(field.Options),
-		Rules:        projectRules(field.Rules),
-		Fields:       projectFields(field.Fields),
-		Searchable:   field.Searchable,
-		Indexed:      field.Indexed,
-		Unique:       field.Unique,
-		Sensitive:    field.Sensitive,
-		Encrypted:    field.Encrypted,
-		UIHint:       field.UIHint,
-		StorageHint:  field.StorageHint,
+func cloneField(field schema.Field) schema.Field {
+	cloned := field
+	if field.Options != nil {
+		cloned.Options = append([]schema.Option(nil), field.Options...)
 	}
+	if field.Rules != nil {
+		cloned.Rules = make([]schema.ValidationRule, len(field.Rules))
+		for index, rule := range field.Rules {
+			cloned.Rules[index] = rule
+			cloned.Rules[index].Args = maps.Clone(rule.Args)
+		}
+	}
+	cloned.Fields = cloneFields(field.Fields)
 	if field.Items != nil {
-		item := projectField(*field.Items)
-		projected.Items = &item
+		item := cloneField(*field.Items)
+		cloned.Items = &item
 	}
-	return projected
+	return cloned
 }
 
-func projectOptions(options []schema.Option) []Option {
-	if options == nil {
-		return nil
-	}
-	projected := make([]Option, len(options))
-	for index, option := range options {
-		projected[index] = Option{Value: option.Value, Label: option.Label}
-	}
-	return projected
-}
-
-func projectRules(rules []schema.ValidationRule) []ValidationRule {
-	if rules == nil {
-		return nil
-	}
-	projected := make([]ValidationRule, len(rules))
-	for index, rule := range rules {
-		projected[index] = ValidationRule{
-			Name: rule.Name, Message: rule.Message, Severity: rule.Severity,
-		}
-		if rule.Args != nil {
-			projected[index].Args = make(map[string]string, len(rule.Args))
-			for key, value := range rule.Args {
-				projected[index].Args[key] = value
-			}
-		}
-	}
-	return projected
-}
-
-func projectRelations(relations []schema.Relation) []Relation {
+func cloneRelations(relations []schema.Relation) []schema.Relation {
 	if relations == nil {
 		return nil
 	}
-	projected := make([]Relation, len(relations))
+	cloned := make([]schema.Relation, len(relations))
 	for index, relation := range relations {
-		projected[index] = Relation{
-			ID:                   RelationID(relation.ID),
-			Label:                relation.Label,
-			Source:               RecordTypeID(relation.Source),
-			Target:               RecordTypeID(relation.Target),
-			Cardinality:          RelationCardinality(relation.Cardinality),
-			InverseName:          relation.InverseName,
-			CrossWorkspacePolicy: relation.CrossWorkspacePolicy,
-			Policy: RelationPolicy{
-				CrossWorkspaceMode: CrossWorkspaceMode(relation.Policy.CrossWorkspaceMode),
-				AllowedTargets:     append([]string(nil), relation.Policy.AllowedTargets...),
-				Capability:         CapabilityID(relation.Policy.Capability),
-				ReadOnly:           relation.Policy.ReadOnly,
-			},
-			DeleteBehavior: DeleteBehavior(relation.DeleteBehavior),
+		cloned[index] = relation
+		if relation.Policy.AllowedTargets != nil {
+			cloned[index].Policy.AllowedTargets = append([]string(nil), relation.Policy.AllowedTargets...)
 		}
 	}
-	return projected
-}
-
-func projectCapabilities(capabilities []schema.CapabilityID) []CapabilityID {
-	if capabilities == nil {
-		return nil
-	}
-	projected := make([]CapabilityID, len(capabilities))
-	for index, capability := range capabilities {
-		projected[index] = CapabilityID(capability)
-	}
-	return projected
+	return cloned
 }

@@ -1,134 +1,95 @@
 package formset
 
-type RecordTypeID string
-type FieldID string
-type RelationID string
-type CapabilityID string
-type SchemaVersion string
-type Scope string
+import "github.com/fastygo/codex/schema"
 
-const (
-	ScopeGlobal    Scope = "global"
-	ScopeWorkspace Scope = "workspace"
-	ScopeTenant    Scope = "tenant"
-	ScopeUser      Scope = "user"
+// The record vocabulary is owned by github.com/fastygo/codex/schema.
+// formset re-exports it as type aliases so callers can use either name;
+// there is no formset-owned copy of these structs (see ADR-0001).
+type (
+	RecordTypeID        = schema.RecordTypeID
+	FieldID             = schema.FieldID
+	RelationID          = schema.RelationID
+	CapabilityID        = schema.CapabilityID
+	SchemaVersion       = schema.SchemaVersion
+	Scope               = schema.Scope
+	FieldType           = schema.FieldType
+	RelationCardinality = schema.RelationCardinality
+	DeleteBehavior      = schema.DeleteBehavior
+	CrossWorkspaceMode  = schema.CrossWorkspaceMode
+	RelationPolicy      = schema.RelationPolicy
+	Option              = schema.Option
+	ValidationRule      = schema.ValidationRule
+	Field               = schema.Field
+	Relation            = schema.Relation
+	RecordType          = schema.RecordType
 )
 
-type FieldType string
-
 const (
-	FieldText       FieldType = "text"
-	FieldString     FieldType = "string"
-	FieldTextarea   FieldType = "textarea"
-	FieldRichText   FieldType = "richtext"
-	FieldMarkdown   FieldType = "markdown"
-	FieldNumber     FieldType = "number"
-	FieldBoolean    FieldType = "boolean"
-	FieldSelect     FieldType = "select"
-	FieldDateTime   FieldType = "datetime"
-	FieldJSON       FieldType = "json"
-	FieldObject     FieldType = "object"
-	FieldRelation   FieldType = "relation"
-	FieldCollection FieldType = "collection"
-	FieldComputed   FieldType = "computed"
-	FieldEncrypted  FieldType = "encrypted"
+	ScopeGlobal    = schema.ScopeGlobal
+	ScopeWorkspace = schema.ScopeWorkspace
+	ScopeTenant    = schema.ScopeTenant
+	ScopeUser      = schema.ScopeUser
 )
 
-// Slot UI hints. Codex sets these on projection; renderers must not infer them from Type alone.
 const (
+	FieldText       = schema.FieldText
+	FieldString     = schema.FieldString
+	FieldTextarea   = schema.FieldTextarea
+	FieldRichText   = schema.FieldRichText
+	FieldMarkdown   = schema.FieldMarkdown
+	FieldNumber     = schema.FieldNumber
+	FieldBoolean    = schema.FieldBoolean
+	FieldSelect     = schema.FieldSelect
+	FieldDateTime   = schema.FieldDateTime
+	FieldJSON       = schema.FieldJSON
+	FieldObject     = schema.FieldObject
+	FieldRelation   = schema.FieldRelation
+	FieldCollection = schema.FieldCollection
+	FieldComputed   = schema.FieldComputed
+	FieldEncrypted  = schema.FieldEncrypted
+)
+
+const (
+	RelationOneToOne   = schema.RelationOneToOne
+	RelationOneToMany  = schema.RelationOneToMany
+	RelationManyToMany = schema.RelationManyToMany
+)
+
+const (
+	DeleteRestrict = schema.DeleteRestrict
+	DeleteCascade  = schema.DeleteCascade
+	DeleteNullify  = schema.DeleteNullify
+)
+
+// Codex scalar profile rules (fastygo.codex/*). Money, integer, decimal,
+// date, uri and uuid are rules on a base Codex field type, not types.
+const (
+	RuleInteger  = schema.RuleInteger
+	RuleDecimal  = schema.RuleDecimal
+	RuleMoney    = schema.RuleMoney
+	RuleDate     = schema.RuleDate
+	RuleURI      = schema.RuleURI
+	RuleUUID     = schema.RuleUUID
+	RuleNullable = schema.RuleNullable
+	RuleReadOnly = schema.RuleReadOnly
+	RuleJSONAny  = schema.RuleJSONAny
+)
+
+// Slot UI hints. Codex owns UIHintMedia; the editor hints are formset slots.
+// Renderers must not infer them from Type alone.
+const (
+	UIHintMedia    = schema.UIHintMedia
 	UIHintTipTap   = "tiptap"
 	UIHintMarkdown = "markdown"
 	UIHintTextarea = "textarea"
 )
 
-type RelationCardinality string
-
-const (
-	RelationOneToOne   RelationCardinality = "one-to-one"
-	RelationOneToMany  RelationCardinality = "one-to-many"
-	RelationManyToMany RelationCardinality = "many-to-many"
-)
-
-type DeleteBehavior string
-
-const (
-	DeleteRestrict DeleteBehavior = "restrict"
-	DeleteCascade  DeleteBehavior = "cascade"
-	DeleteNullify  DeleteBehavior = "nullify"
-)
-
-type CrossWorkspaceMode string
-
+// Cross-workspace modes. Codex v0.4.2 declares the CrossWorkspaceMode type
+// but no constants; these values are typed as the Codex type and kept here
+// until Codex exports its own (documented gap, see CHANGELOG).
 const (
 	CrossWorkspaceForbidden          CrossWorkspaceMode = "forbidden"
 	CrossWorkspaceSameProfile        CrossWorkspaceMode = "same-profile"
 	CrossWorkspaceExplicitTargets    CrossWorkspaceMode = "explicit-targets"
 	CrossWorkspaceRequiresCapability CrossWorkspaceMode = "requires-capability"
 )
-
-type RelationPolicy struct {
-	CrossWorkspaceMode CrossWorkspaceMode `json:"cross_workspace_mode,omitempty"`
-	AllowedTargets     []string           `json:"allowed_targets,omitempty"`
-	Capability         CapabilityID       `json:"capability,omitempty"`
-	ReadOnly           bool               `json:"read_only,omitempty"`
-}
-
-type Option struct {
-	Value string `json:"value"`
-	Label string `json:"label"`
-}
-
-type ValidationRule struct {
-	Name     string            `json:"name"`
-	Message  string            `json:"message,omitempty"`
-	Args     map[string]string `json:"args,omitempty"`
-	Severity string            `json:"severity,omitempty"`
-}
-
-type Field struct {
-	ID           FieldID          `json:"id"`
-	Label        string           `json:"label"`
-	Type         FieldType        `json:"type"`
-	Namespace    string           `json:"namespace,omitempty"`
-	OwnerModule  string           `json:"owner_module,omitempty"`
-	Description  string           `json:"description,omitempty"`
-	Required     bool             `json:"required,omitempty"`
-	Localized    bool             `json:"localized,omitempty"`
-	DefaultValue string           `json:"default_value,omitempty"`
-	Options      []Option         `json:"options,omitempty"`
-	Rules        []ValidationRule `json:"rules,omitempty"`
-	Items        *Field           `json:"items,omitempty"`
-	Fields       []Field          `json:"fields,omitempty"`
-	Searchable   bool             `json:"searchable,omitempty"`
-	Indexed      bool             `json:"indexed,omitempty"`
-	Unique       bool             `json:"unique,omitempty"`
-	Sensitive    bool             `json:"sensitive,omitempty"`
-	Encrypted    bool             `json:"encrypted,omitempty"`
-	UIHint       string           `json:"ui_hint,omitempty"`
-	StorageHint  string           `json:"storage_hint,omitempty"`
-}
-
-type Relation struct {
-	ID                   RelationID          `json:"id"`
-	Label                string              `json:"label,omitempty"`
-	Source               RecordTypeID        `json:"source"`
-	Target               RecordTypeID        `json:"target"`
-	Cardinality          RelationCardinality `json:"cardinality"`
-	InverseName          string              `json:"inverse_name,omitempty"`
-	CrossWorkspacePolicy string              `json:"cross_workspace_policy,omitempty"`
-	Policy               RelationPolicy      `json:"policy,omitempty"`
-	DeleteBehavior       DeleteBehavior      `json:"delete_behavior,omitempty"`
-}
-
-type RecordType struct {
-	ID            RecordTypeID   `json:"id"`
-	Label         string         `json:"label"`
-	Description   string         `json:"description,omitempty"`
-	SchemaVersion SchemaVersion  `json:"schema_version,omitempty"`
-	OwnerModule   string         `json:"owner_module,omitempty"`
-	Scope         Scope          `json:"scope"`
-	Fields        []Field        `json:"fields,omitempty"`
-	Relations     []Relation     `json:"relations,omitempty"`
-	Capabilities  []CapabilityID `json:"capabilities,omitempty"`
-	Visibility    string         `json:"visibility,omitempty"`
-}
