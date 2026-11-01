@@ -5,5 +5,6 @@
 // payload_ru / payload_en pair.
 //
 // This module has no renderer, BFF, or storage dependency.
-// Content fields are owned by github.com/fastygo/codex and projected with FromCodex.
+// The record vocabulary is github.com/fastygo/codex/schema (type aliases);
+// FromCodex is the single entry point from a Codex manifest.
 package formset
