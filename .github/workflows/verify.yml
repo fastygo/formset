@@ -1,0 +1,39 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: 1.25.13
+          cache: true
+      - run: test -z "$(gofmt -l .)"
+      - run: go mod tidy -diff
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -race -count=1 -cover ./...
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: 1.25.13
+          cache: true
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
+      - run: golangci-lint run ./...
