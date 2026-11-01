@@ -1,6 +1,7 @@
 package formset
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -41,7 +42,7 @@ func TestFromCodexRoundTripIsLossless(t *testing.T) {
 	}
 	want, _ := json.Marshal(source)
 	got, _ := json.Marshal(projected)
-	if string(want) != string(got) {
+	if !bytes.Equal(want, got) {
 		t.Fatalf("json differs:\n%s\n%s", want, got)
 	}
 }
